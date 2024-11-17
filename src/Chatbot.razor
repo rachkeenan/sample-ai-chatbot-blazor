@@ -1,0 +1,89 @@
+﻿@page "/"
+
+@using Microsoft.JSInterop
+@using Microsoft.SemanticKernel.ChatCompletion
+
+@inject IChatCompletionService ChatService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>OpenAI ChatBot</PageTitle>
+
+<div class="chat-session">
+    <div class="chat-history" id="chatHistory">
+        @foreach (var chatMessage in chatMessages)
+        {
+            @if (chatMessage.Role == "User")
+            {
+                <div class="message user-message">
+                    <p>@chatMessage.Message</p>
+                    <span class="timestamp">@chatMessage.Timestamp.ToString("HH:mm")</span> <!-- Display time like 14:23 -->
+                </div>
+            }
+            else if (chatMessage.Role == "Assistant")
+            {
+                <div class="message assistant-message">
+                    <p>@chatMessage.Message</p>
+                    <span class="timestamp">@chatMessage.Timestamp.ToString("HH:mm")</span> <!-- Display time like 14:23 -->
+                </div>
+            }
+        }
+    </div>
+    <div class="chat-input">
+        <textarea @bind="@userQuery" placeholder="Ask me anything..." class="chat-input-text"></textarea>
+        <input type="button" class="chat-input-button" value="Send" @onclick="SendQuery" />
+    </div>
+</div>
+
+@code {
+    private string userQuery = string.Empty;
+    private string chatResponse = string.Empty;
+    private List<ChatMessage> chatMessages = new List<ChatMessage>();
+
+    ChatHistory chatHistory = new("You are a friendly AI bot called 'Bob the bot', introduce yourself to the user. You are enthusiastic and excited to help.");
+
+    private async Task SendQuery()
+    {
+        // Add the user's message to the chat history with a timestamp
+        chatHistory.AddUserMessage(userQuery);
+        chatMessages.Add(new ChatMessage { Role = "User", Message = userQuery, Timestamp = DateTime.Now });
+        userQuery = string.Empty;
+
+        // Start streaming the assistant's response
+        var chunks = ChatService.GetStreamingChatMessageContentsAsync(chatHistory);
+
+        // Add the initial assistant message with an empty response and timestamp
+        var assistantMessage = new ChatMessage { Role = "Assistant", Message = "", Timestamp = DateTime.Now };
+        chatMessages.Add(assistantMessage);
+
+        // Stream the response, appending each chunk to the last message
+        await foreach (var chunk in chunks)
+        {
+            // Update the last assistant message with the new chunk
+            assistantMessage.Message += chunk;
+            StateHasChanged(); // Trigger UI update
+            await ScrollToBottom();
+        }
+
+        // After all chunks are received, finalize the assistant's response
+        chatHistory.AddAssistantMessage(assistantMessage.Message);
+    }
+
+    private async Task ScrollToBottom()
+    {
+        await JSRuntime.InvokeVoidAsync("scrollToBottom");
+    }
+
+    public class ChatMessage
+    {
+        public string Role { get; set; }
+        public string Message { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+}
+
+<script>
+    function scrollToBottom() {
+        var chatHistory = document.getElementById('chatHistory');
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+</script>
