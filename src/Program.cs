@@ -1,5 +1,6 @@
 using Microsoft.SemanticKernel;
 using BlazorChatbot;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,7 @@ builder.Services.AddOpenAIChatCompletion(
     apiKey: Environment.GetEnvironmentVariable("OPENAI_API_KEY")
     );
 
+builder.Services.AddMudServices();
 
 var app = builder.Build();
 
