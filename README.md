@@ -9,7 +9,7 @@ There are two options within this code sample (styling), a custom css version (C
 
 [//]: # (<img src="assets/CustomCssDemo.gif" height="300px" width="500px"/>)
 
-## MudBlazor 
+## MudBlazor example
 
 ![Chatbot demo](assets/MudBlazorDemo.gif)
 
