@@ -1,0 +1,110 @@
+﻿@page "/"
+
+@using Microsoft.SemanticKernel.ChatCompletion
+
+@inject IChatCompletionService ChatService
+@inject IJSRuntime JsRuntime
+
+<MudContainer Style="height: 100vh; width: 100vw; margin: 0 auto;">
+    @* <MudPaper Class="chat-session d-flex flex-column" Height="600px" Width="100%" Style="margin-top: 10px;"> *@
+    <MudPaper Class="chat-session d-flex flex-column" Height="100%" Elevation="4" Square="false" Outlined="true">
+        <!--Chat History-->
+        <MudStack Class="chat-history flex-grow-1 overflow-y-scroll" Spacing="2">
+            @foreach (var chatMessage in _chatMessages)
+            {
+                @if (chatMessage.Role == "User")
+                {
+                    <!-- User Message -->
+                    <MudPaper Class="user-message bg-primary text-white pa-5 ma-2" Elevation="1"
+                              Style="max-width:70%;align-self:flex-end;background:#dcf8c6;">
+                        <MudText>@chatMessage.Message</MudText>
+                        <MudText Class="timestamp text-white-50"
+                                 Align="Align.Right">@chatMessage.Timestamp.ToString("HH:mm")</MudText>
+                    </MudPaper>
+                }
+                else if (chatMessage.Role == "Assistant")
+                {
+                    <!--Assistant Message-->
+                    <MudPaper Class="assistant-message pa-5 ma-2" Elevation="1"
+                              Style="max-width:70%;background:#f1f1f1;">
+                        <MudText>@chatMessage.Message</MudText>
+                        <MudText Class="timestamp"
+                                 Align="Align.Right">@chatMessage.Timestamp.ToString("HH:mm")</MudText>
+                    </MudPaper>
+                }
+            }
+        </MudStack>
+        <!-- Chat Input -->
+        <MudStack Direction="Row" AlignItems="AlignItems.Center" Class="chat-input pa-5 ma-2 flex-grow-0 flex-shrink-0" Spacing="2" Style="flex-basis: 50px;">
+            @* <MudTextField @bind-Value="@_userQuery" AutoGrow="true" Class="chat-input-text" T="string" Variant="Variant.Outlined" Placeholder="Ask me anything" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Send" OnAdornmentClick="SendQuery" AdornmentColor="Color.Info" FullWidth="true" OnKeyDown="HandleKeyDown" KeyDownPreventDefault="_preventDefault"/> *@
+            <MudTextField @bind-Value="@_userQuery" Class="chat-input-text" T="string"
+                          Variant="Variant.Outlined" Placeholder="Ask me anything" Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Send" OnAdornmentClick="SendQuery"
+                          AdornmentColor="Color.Info" FullWidth="true"/>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string _userQuery = string.Empty;
+    private string _chatResponse = string.Empty;
+
+    private List<ChatMessage> _chatMessages = new List<ChatMessage>();
+
+    ChatHistory _chatHistory = new("You are a friendly AI bot called 'Bob the bot', introduce yourself to the user. You are enthusiastic and excited to help.");
+
+    async Task SendQuery()
+    {
+        // Add the user's message to the chat history with a timestamp
+        _chatHistory.AddUserMessage(_userQuery);
+        _chatMessages.Add(new ChatMessage { Role = "User", Message = _userQuery, Timestamp = DateTime.Now });
+        _userQuery = string.Empty;
+
+        // Start streaming the assistant's response
+        var chunks = ChatService.GetStreamingChatMessageContentsAsync(_chatHistory);
+
+        // Add the initial assistant message with an empty response and timestamp
+        var assistantMessage = new ChatMessage { Role = "Assistant", Message = "", Timestamp = DateTime.Now };
+        _chatMessages.Add(assistantMessage);
+
+        // Stream the response, appending each chunk to the last message
+        await foreach (var chunk in chunks)
+        {
+            // Update the last assistant message with the new chunk
+            assistantMessage.Message += chunk;
+            StateHasChanged(); // Trigger UI update
+            await ScrollToBottom();
+        }
+
+        // After all chunks are received, finalize the assistant's response
+        _chatHistory.AddAssistantMessage(assistantMessage.Message);
+    }
+
+    private async Task ScrollToBottom()
+    {
+        await JsRuntime.InvokeVoidAsync("scrollToBottom");
+    }
+
+    public class ChatMessage
+    {
+        public string Role { get; set; }
+        public string Message { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+    // private async Task HandleKeyDown(KeyboardEventArgs args)
+    // {
+    //     if (args.Key == "Enter" && !args.ShiftKey)
+    //     {
+    //         args.PreventDefault();
+    //         await SendQuery();
+    //     }
+    // }
+
+}
+
+<script>
+    function scrollToBottom() {
+        let chatHistory = document.getElementsByClassName('chat-history')[0];
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+</script>

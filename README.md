@@ -5,13 +5,15 @@ There are two options within this code sample (styling), a custom css version (C
 
 ## Custom CSS example
 
-[//]: # (![Chatbot demo]&#40;assets/CustomCssDemo.gif&#41;)
-<img src="assets/CustomCssDemo.gif" height="300px" width="500px"/>
+![Chatbot demo](assets/CustomCssDemo.gif)
+
+[//]: # (<img src="assets/CustomCssDemo.gif" height="300px" width="500px"/>)
 
 ## MudBlazor 
 
-[//]: # (![Chatbot demo]&#40;assets/MudBlazorDemo.gif&#41;)
-<img src="assets/MudBlazorDemo.gif" height="300px" width="500px"/>
+![Chatbot demo](assets/MudBlazorDemo.gif)
+
+[//]: # (<img src="assets/MudBlazorDemo.gif" height="300px" width="500px"/>)
 
 # Installation
 
