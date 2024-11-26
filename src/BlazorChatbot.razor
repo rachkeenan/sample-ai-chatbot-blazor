@@ -6,7 +6,6 @@
 @inject IJSRuntime JsRuntime
 
 <MudContainer Style="height: 100vh; width: 100vw; margin: 0 auto;">
-    @* <MudPaper Class="chat-session d-flex flex-column" Height="600px" Width="100%" Style="margin-top: 10px;"> *@
     <MudPaper Class="chat-session d-flex flex-column" Height="100%" Elevation="4" Square="false" Outlined="true">
         <!--Chat History-->
         <MudStack Class="chat-history flex-grow-1 overflow-y-scroll" Spacing="2">
@@ -36,11 +35,19 @@
         </MudStack>
         <!-- Chat Input -->
         <MudStack Direction="Row" AlignItems="AlignItems.Center" Class="chat-input pa-5 ma-2 flex-grow-0 flex-shrink-0" Spacing="2" Style="flex-basis: 50px;">
-            @* <MudTextField @bind-Value="@_userQuery" AutoGrow="true" Class="chat-input-text" T="string" Variant="Variant.Outlined" Placeholder="Ask me anything" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Send" OnAdornmentClick="SendQuery" AdornmentColor="Color.Info" FullWidth="true" OnKeyDown="HandleKeyDown" KeyDownPreventDefault="_preventDefault"/> *@
-            <MudTextField @bind-Value="@_userQuery" Class="chat-input-text" T="string"
-                          Variant="Variant.Outlined" Placeholder="Ask me anything" Adornment="Adornment.End"
-                          AdornmentIcon="@Icons.Material.Filled.Send" OnAdornmentClick="SendQuery"
-                          AdornmentColor="Color.Info" FullWidth="true"/>
+            <MudTextField @ref="textField"
+                          @bind-Value="@_userQuery" 
+                          Class="chat-input-text" 
+                          InputId="chat-input-text" 
+                          T="string"
+                          Variant="Variant.Outlined" 
+                          Placeholder="Ask me anything" 
+                          OnKeyUp="@HandleKeyUp"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Send" 
+                          OnAdornmentClick="@HandleAdornmentClick" 
+                          AdornmentColor="Color.Info" 
+                          FullWidth="true" />
         </MudStack>
     </MudPaper>
 </MudContainer>
@@ -48,6 +55,7 @@
 @code {
     private string _userQuery = string.Empty;
     private string _chatResponse = string.Empty;
+    private MudTextField<string> textField;
 
     private List<ChatMessage> _chatMessages = new List<ChatMessage>();
 
@@ -55,11 +63,18 @@
 
     async Task SendQuery()
     {
+        if (string.IsNullOrWhiteSpace(_userQuery))
+            return; // Ignore empty input
+        
         // Add the user's message to the chat history with a timestamp
         _chatHistory.AddUserMessage(_userQuery);
         _chatMessages.Add(new ChatMessage { Role = "User", Message = _userQuery, Timestamp = DateTime.Now });
-        _userQuery = string.Empty;
-
+        textField.Clear();
+        
+        
+        // Call JavaScript to refocus the input field
+        await JsRuntime.InvokeVoidAsync("focusOnInput");
+        
         // Start streaming the assistant's response
         var chunks = ChatService.GetStreamingChatMessageContentsAsync(_chatHistory);
 
@@ -91,15 +106,18 @@
         public string Message { get; set; }
         public DateTime Timestamp { get; set; }
     }
-    // private async Task HandleKeyDown(KeyboardEventArgs args)
-    // {
-    //     if (args.Key == "Enter" && !args.ShiftKey)
-    //     {
-    //         args.PreventDefault();
-    //         await SendQuery();
-    //     }
-    // }
-
+    private async Task HandleKeyUp(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !args.ShiftKey)
+        {
+            await SendQuery();
+        }
+    }
+    
+    private async Task HandleAdornmentClick()
+    {
+        await SendQuery();
+    }
 }
 
 <script>
@@ -107,4 +125,12 @@
         let chatHistory = document.getElementsByClassName('chat-history')[0];
         chatHistory.scrollTop = chatHistory.scrollHeight;
     }
+    function focusOnInput() {
+        console.warn('focusOnInput called');
+        const element = document.getElementById('chat-input-text');
+        if (element) {
+            element.focus();
+        }
+    }
 </script>
+
